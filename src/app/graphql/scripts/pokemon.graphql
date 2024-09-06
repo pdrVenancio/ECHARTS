@@ -1,0 +1,261 @@
+query GetPokemons($limit: Int!) {
+  pokemon_v2_pokemon(limit: $limit) {
+    name
+    height
+    weight
+  }
+}
+
+query GetPokemonStats($names: [String!]) {
+  pokemon_v2_pokemon(where: { name: { _in: $names } }) {
+    name
+    pokemon_v2_pokemonstats {
+      base_stat
+      pokemon_v2_stat {
+        name
+      }
+    }
+  }
+}
+
+query GetStats {
+  pokemon_v2_stat(where: { name: { _nin: ["accuracy", "evasion"] } }) {
+    name
+  }
+}
+
+query GetPokemonsStatsByType($stat_name: String!, $generation_ids: [Int!]) {
+  pokemon_v2_type(where: { name: { _nin: ["shadow", "stellar", "unknown"] } }) {
+    name
+    pokemon_v2_pokemontypes(
+      where: { 
+        pokemon_v2_pokemon: { 
+          is_default: { _eq: true },
+          pokemon_v2_pokemongameindices: {
+            pokemon_v2_version: {
+              pokemon_v2_versiongroup: {
+                generation_id: { _in:  $generation_ids }
+              }
+            }
+          }
+        }
+      }
+    ) {
+      pokemon_v2_pokemon {
+        name
+        pokemon_v2_pokemonstats(
+          where: { pokemon_v2_stat: { name: { _eq: $stat_name } } }
+        ) {
+          pokemon_v2_stat {
+            name
+          }
+          base_stat
+        }
+      }
+    }
+  }
+}
+
+query GetTypeEffectiveness($generation_ids: [Int!]) {
+  pokemon_v2_type(where: { name: { _nin: ["shadow", "stellar", "unknown"] } }) {
+    name
+    pokemonV2TypeefficaciesByTargetTypeId {
+      pokemon_v2_type {
+        name
+        pokemon_v2_pokemontypes(
+          where: { 
+            pokemon_v2_pokemon: { 
+              pokemon_v2_pokemongameindices: {  
+                pokemon_v2_version: {
+                  pokemon_v2_versiongroup: {
+                    generation_id: { _in: $generation_ids }
+                  }
+                }
+              }
+            }
+          }
+        ) {
+          pokemon_v2_pokemon {
+            name
+          }
+        }
+      }
+      damage_factor
+    }
+  }
+}
+
+query GetGenerations {
+  pokemon_v2_generation {
+    id
+  }
+}
+
+query GetPokemonTypesCount($generation_ids: [Int!]) {
+  pokemon_v2_type(where: { name: { _nin: ["shadow", "stellar", "unknown"] } }) {
+    name
+    pokemon_v2_pokemontypes_aggregate(
+      where: { 
+        pokemon_v2_pokemon: { 
+          is_default: { _eq: true },
+          pokemon_v2_pokemongameindices: {
+            pokemon_v2_version: {
+              pokemon_v2_versiongroup: {
+                generation_id: { _in: $generation_ids }
+              }
+            }
+          }
+        }
+      }
+    ) {
+      aggregate {
+        count
+      }
+    }
+  }
+}
+
+query GetPokemonTypesCountByNames($pokemon_names: [String!]) {
+  pokemon_v2_type(where: { name: { _nin: ["shadow", "stellar", "unknown"] } }) {
+    name
+    pokemon_v2_pokemontypes_aggregate(
+      where: {
+        pokemon_v2_pokemon: {
+          is_default: { _eq: true }
+          name: { _in: $pokemon_names }
+        }
+      }
+    ) {
+      aggregate {
+        count
+      }
+    }
+  }
+}
+
+query GetPokemonCountByGeneration {
+  pokemon_v2_generation(where: {id: {_lte: 5} } ) {
+    id
+    pokemon_v2_pokemonspecies_aggregate(
+      where: { pokemon_v2_pokemons: { is_default: { _eq: true } } }
+    ) {
+      aggregate {
+        count
+      }
+    }
+  }
+}
+
+query GetTypes {
+  pokemon_v2_type(
+    where: { name: { _nin: ["shadow", "stellar", "unknown"] } }
+    order_by: { name: asc }
+  ) {
+    name
+  }
+}
+
+query GetPokemonCountByGenerationAndName($type_name: [String!]) {
+  pokemon_v2_generation {
+    id
+    pokemon_v2_pokemonspecies_aggregate(
+      where: {
+        pokemon_v2_pokemons: {
+          is_default: { _eq: true }
+          pokemon_v2_pokemontypes: {
+            pokemon_v2_type: { name: { _in: $type_name } }
+          }
+        }
+      }
+    ) {
+      aggregate {
+        count
+      }
+    }
+  }
+}
+
+query GetPokemonTypeCountsByGeneration($generation_ids: [Int!], $previous_generation_id: Int!) {
+  singleTypeCount: pokemon_v2_pokemon_aggregate(where: {
+    is_default: { _eq: true },
+    pokemon_v2_pokemontypes: {
+      pokemon_v2_type: { name: { _nin: ["shadow", "stellar", "unknown"] } }
+    },
+    pokemon_v2_pokemongameindices: {
+      pokemon_v2_version: { pokemon_v2_versiongroup: { generation_id: { _in: $generation_ids } } }
+    },
+    _and: {
+      _not: {
+        pokemon_v2_pokemongameindices: {
+          pokemon_v2_version: { pokemon_v2_versiongroup: { generation_id: { _eq: $previous_generation_id } } }
+        }
+      }
+    },
+    pokemon_v2_pokemontypes_aggregate: { count: { predicate: { _eq: 1 } } }
+  }) {
+    aggregate {
+      count
+    }
+  }
+  
+  dualTypeCount: pokemon_v2_pokemon_aggregate(where: {
+    is_default: { _eq: true },
+    pokemon_v2_pokemontypes: {
+      pokemon_v2_type: { name: { _nin: ["shadow", "stellar", "unknown"] } }
+    },
+    pokemon_v2_pokemongameindices: {
+      pokemon_v2_version: { pokemon_v2_versiongroup: { generation_id: { _in: $generation_ids } } }
+    },
+    _and: {
+      _not: {
+        pokemon_v2_pokemongameindices: {
+          pokemon_v2_version: { pokemon_v2_versiongroup: { generation_id: { _eq: $previous_generation_id } } }
+        }
+      }
+    },
+    pokemon_v2_pokemontypes_aggregate: { count: { predicate: { _eq: 2 } } }
+  }) {
+    aggregate {
+      count
+    }
+  }
+}
+
+
+query GetPokemonMovesClassesCount(
+  $generation_id: Int!
+  $pokemon_name: String!
+) {
+  pokemon_v2_movedamageclass {
+    name
+    pokemon_v2_moves_aggregate(
+      where: {
+        pokemon_v2_pokemonmoves: {
+          pokemon_v2_movelearnmethod: {
+            name: {_eq: "level-up"}
+          },
+          pokemon_v2_pokemon: {
+            name: {_eq: $pokemon_name}
+          }, pokemon_v2_versiongroup: {
+            generation_id: {_eq: $generation_id}
+          }
+        }
+      }
+    ) {
+      aggregate {
+        count
+      }
+    }
+  }
+  pokemon_v2_pokemon(where: {name: {_eq: $pokemon_name}}) {
+    pokemon_v2_pokemonsprites {
+      sprites(path: "front_default")
+    }
+  }
+}
+
+query GetVersionNames {
+  pokemon_v2_version {
+    name
+  }
+}
